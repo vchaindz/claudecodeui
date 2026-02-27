@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import SessionProviderLogo from '../../../llm-logo-provider/SessionProviderLogo';
 import NextTaskBanner from '../../../NextTaskBanner.jsx';
-import { CLAUDE_MODELS, CURSOR_MODELS, CODEX_MODELS } from '../../../../../shared/modelConstants';
+import { useCustomModels } from '../../hooks/useCustomModels';
+import ManageModelsPopover from './ManageModelsPopover';
 import type { ProjectSession, SessionProvider } from '../../../../types/app';
 
 interface ProviderSelectionEmptyStateProps {
@@ -60,12 +61,6 @@ const PROVIDERS: ProviderDef[] = [
   },
 ];
 
-function getModelConfig(p: SessionProvider) {
-  if (p === 'claude') return CLAUDE_MODELS;
-  if (p === 'codex') return CODEX_MODELS;
-  return CURSOR_MODELS;
-}
-
 function getModelValue(p: SessionProvider, c: string, cu: string, co: string) {
   if (p === 'claude') return c;
   if (p === 'codex') return co;
@@ -104,8 +99,15 @@ export default function ProviderSelectionEmptyState({
     else { setCursorModel(value); localStorage.setItem('cursor-model', value); }
   };
 
-  const modelConfig = getModelConfig(provider);
+  const { allModels, addModel, removeModel, isCustom, defaultModel } = useCustomModels(provider);
   const currentModel = getModelValue(provider, claudeModel, cursorModel, codexModel);
+
+  // If the selected model is no longer in the list, reset to default
+  useEffect(() => {
+    if (!allModels.some((m) => m.value === currentModel)) {
+      handleModelChange(defaultModel);
+    }
+  }, [allModels, currentModel, defaultModel]);
 
   /* ── New session — provider picker ── */
   if (!selectedSession && !currentSessionId) {
@@ -170,12 +172,18 @@ export default function ProviderSelectionEmptyState({
                   tabIndex={-1}
                   className="appearance-none pl-3 pr-7 py-1.5 text-sm font-medium bg-muted/50 border border-border/60 rounded-lg text-foreground cursor-pointer hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  {modelConfig.OPTIONS.map(({ value, label }: { value: string; label: string }) => (
+                  {allModels.map(({ value, label }) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
                 <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
               </div>
+              <ManageModelsPopover
+                allModels={allModels}
+                addModel={addModel}
+                removeModel={removeModel}
+                isCustom={isCustom}
+              />
             </div>
 
             <p className="text-center text-sm text-muted-foreground/70">
