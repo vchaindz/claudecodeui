@@ -5,6 +5,8 @@ import type { SessionProvider } from '../../../types/app';
 export interface ModelOption {
   value: string;
   label: string;
+  baseUrl?: string;
+  systemPrompt?: string;
 }
 
 const STORAGE_KEYS: Record<SessionProvider, string> = {
@@ -58,12 +60,15 @@ export function useCustomModels(provider: SessionProvider) {
   ];
 
   const addModel = useCallback(
-    (value: string, label?: string) => {
+    (value: string, label?: string, baseUrl?: string, systemPrompt?: string) => {
       const trimmedValue = value.trim();
       if (!trimmedValue) return;
       // Don't add duplicates
       if (allModels.some((m) => m.value === trimmedValue)) return;
-      const next = [...customModels, { value: trimmedValue, label: (label?.trim() || trimmedValue) }];
+      const entry: ModelOption = { value: trimmedValue, label: (label?.trim() || trimmedValue) };
+      if (baseUrl?.trim()) entry.baseUrl = baseUrl.trim();
+      if (systemPrompt?.trim()) entry.systemPrompt = systemPrompt.trim();
+      const next = [...customModels, entry];
       setCustomModels(next);
       saveCustomModels(provider, next);
     },

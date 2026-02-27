@@ -61,6 +61,9 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
   const [ollamaAuthToken, setOllamaAuthToken] = useState(() =>
     localStorage.getItem('ollama-auth-token') || 'ollama'
   );
+  const [ollamaThinkingModel, setOllamaThinkingModel] = useState(() =>
+    localStorage.getItem('ollama-thinking-model') || ''
+  );
 
   useEffect(() => {
     localStorage.setItem('ollama-enabled', String(ollamaEnabled));
@@ -73,6 +76,10 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
   useEffect(() => {
     localStorage.setItem('ollama-auth-token', ollamaAuthToken);
   }, [ollamaAuthToken]);
+
+  useEffect(() => {
+    localStorage.setItem('ollama-thinking-model', ollamaThinkingModel);
+  }, [ollamaThinkingModel]);
 
   return (
     <div className="space-y-6">
@@ -203,6 +210,21 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
                   />
                   <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
                     Sets ANTHROPIC_AUTH_TOKEN. Use "ollama" for local Ollama or your API key for other backends.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-orange-900 dark:text-orange-100 mb-1">
+                    Thinking Model Override
+                  </label>
+                  <input
+                    type="text"
+                    value={ollamaThinkingModel}
+                    onChange={(e) => setOllamaThinkingModel(e.target.value)}
+                    placeholder="e.g. qwen3-coder-next:q4_K_M"
+                    className="w-full px-3 py-2 text-sm border border-orange-300 dark:border-orange-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
+                    Use a larger model when thinking mode is active. Leave empty to always use the selected model.
                   </p>
                 </div>
               </div>

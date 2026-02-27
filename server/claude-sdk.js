@@ -185,10 +185,16 @@ function mapCliOptionsToSDK(options = {}) {
   console.log(`Using model: ${sdkOptions.model}`);
 
   // Map system prompt configuration
-  sdkOptions.systemPrompt = {
-    type: 'preset',
-    preset: 'claude_code'  // Required to use CLAUDE.md
-  };
+  // If a custom system prompt is provided (e.g. per-model for Ollama), use it;
+  // otherwise use the claude_code preset (required for CLAUDE.md loading).
+  if (options.ollamaConfig?.systemPrompt) {
+    sdkOptions.systemPrompt = options.ollamaConfig.systemPrompt;
+  } else {
+    sdkOptions.systemPrompt = {
+      type: 'preset',
+      preset: 'claude_code'  // Required to use CLAUDE.md
+    };
+  }
 
   // Map setting sources for CLAUDE.md loading
   // This loads CLAUDE.md from project, user (~/.config/claude/CLAUDE.md), and local directories

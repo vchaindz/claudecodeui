@@ -284,6 +284,14 @@ export function useChatComposerState({
         const args =
           commandMatch && commandMatch[1] ? commandMatch[1].trim().split(/\s+/) : [];
 
+        // Include custom models so /model command can display them
+        const storageKey = provider === 'cursor' ? 'cursor-custom-models' : provider === 'codex' ? 'codex-custom-models' : 'claude-custom-models';
+        let customModels: string[] = [];
+        try {
+          const raw = localStorage.getItem(storageKey);
+          if (raw) customModels = (JSON.parse(raw) as { value: string }[]).map(m => m.value);
+        } catch { /* ignore */ }
+
         const context = {
           projectPath: selectedProject.fullPath || selectedProject.path,
           projectName: selectedProject.name,
@@ -291,6 +299,7 @@ export function useChatComposerState({
           provider,
           model: provider === 'cursor' ? cursorModel : provider === 'codex' ? codexModel : claudeModel,
           tokenUsage: tokenBudget,
+          customModels,
         };
 
         const response = await authenticatedFetch('/api/commands/execute', {
@@ -632,6 +641,27 @@ export function useChatComposerState({
         });
       } else {
         const ollamaEnabled = localStorage.getItem('ollama-enabled') === 'true';
+        const ollamaThinkingModel = localStorage.getItem('ollama-thinking-model') || '';
+        const isThinking = thinkingMode !== 'none';
+        const effectiveModel = (ollamaEnabled && isThinking && ollamaThinkingModel)
+          ? ollamaThinkingModel
+          : claudeModel;
+
+        // Resolve per-model base URL and system prompt from custom models
+        let resolvedBaseUrl = localStorage.getItem('ollama-base-url') || 'http://localhost:11434';
+        let resolvedSystemPrompt: string | undefined;
+        if (ollamaEnabled) {
+          try {
+            const raw = localStorage.getItem('claude-custom-models');
+            if (raw) {
+              const customs = JSON.parse(raw) as { value: string; baseUrl?: string; systemPrompt?: string }[];
+              const match = customs.find((m) => m.value === effectiveModel);
+              if (match?.baseUrl) resolvedBaseUrl = match.baseUrl;
+              if (match?.systemPrompt) resolvedSystemPrompt = match.systemPrompt;
+            }
+          } catch { /* ignore */ }
+        }
+
         sendMessage({
           type: 'claude-command',
           command: messageContent,
@@ -642,11 +672,12 @@ export function useChatComposerState({
             resume: Boolean(effectiveSessionId),
             toolsSettings,
             permissionMode,
-            model: claudeModel,
+            model: effectiveModel,
             images: uploadedImages,
             ollamaConfig: ollamaEnabled ? {
-              baseUrl: localStorage.getItem('ollama-base-url') || 'http://localhost:11434',
+              baseUrl: resolvedBaseUrl,
               authToken: localStorage.getItem('ollama-auth-token') || 'ollama',
+              systemPrompt: resolvedSystemPrompt,
             } : undefined,
           },
         });

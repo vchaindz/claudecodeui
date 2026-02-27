@@ -183,12 +183,23 @@ Custom commands can be created in:
   },
 
   '/model': async (args, context) => {
-    // Read available models from centralized constants
+    // Read available models from centralized constants + any user-added custom models
     const availableModels = {
       claude: CLAUDE_MODELS.OPTIONS.map(o => o.value),
       cursor: CURSOR_MODELS.OPTIONS.map(o => o.value),
       codex: CODEX_MODELS.OPTIONS.map(o => o.value)
     };
+
+    // Merge custom models sent from the client
+    if (Array.isArray(context?.customModels) && context.customModels.length > 0) {
+      const provider = context?.provider || 'claude';
+      const existing = new Set(availableModels[provider] || []);
+      for (const model of context.customModels) {
+        if (typeof model === 'string' && !existing.has(model)) {
+          availableModels[provider] = [...(availableModels[provider] || []), model];
+        }
+      }
+    }
 
     const currentProvider = context?.provider || 'claude';
     const currentModel = context?.model || CLAUDE_MODELS.DEFAULT;
