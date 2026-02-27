@@ -631,6 +631,7 @@ export function useChatComposerState({
           },
         });
       } else {
+        const ollamaEnabled = localStorage.getItem('ollama-enabled') === 'true';
         sendMessage({
           type: 'claude-command',
           command: messageContent,
@@ -643,6 +644,10 @@ export function useChatComposerState({
             permissionMode,
             model: claudeModel,
             images: uploadedImages,
+            ollamaConfig: ollamaEnabled ? {
+              baseUrl: localStorage.getItem('ollama-base-url') || 'http://localhost:11434',
+              authToken: localStorage.getItem('ollama-auth-token') || 'ollama',
+            } : undefined,
           },
         });
       }

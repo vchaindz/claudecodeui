@@ -548,6 +548,16 @@ async function queryClaudeSDK(command, options = {}, ws) {
     const prevStreamTimeout = process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
     process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT = '300000';
 
+    // Apply Ollama / custom backend config if provided
+    let prevBaseUrl, prevAuthToken;
+    if (options.ollamaConfig) {
+      prevBaseUrl = process.env.ANTHROPIC_BASE_URL;
+      prevAuthToken = process.env.ANTHROPIC_AUTH_TOKEN;
+      process.env.ANTHROPIC_BASE_URL = options.ollamaConfig.baseUrl;
+      process.env.ANTHROPIC_AUTH_TOKEN = options.ollamaConfig.authToken;
+      console.log(`Ollama config applied: ANTHROPIC_BASE_URL=${options.ollamaConfig.baseUrl}`);
+    }
+
     const queryInstance = query({
       prompt: finalCommand,
       options: sdkOptions
@@ -558,6 +568,14 @@ async function queryClaudeSDK(command, options = {}, ws) {
       process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT = prevStreamTimeout;
     } else {
       delete process.env.CLAUDE_CODE_STREAM_CLOSE_TIMEOUT;
+    }
+
+    // Restore Ollama env vars
+    if (options.ollamaConfig) {
+      if (prevBaseUrl !== undefined) process.env.ANTHROPIC_BASE_URL = prevBaseUrl;
+      else delete process.env.ANTHROPIC_BASE_URL;
+      if (prevAuthToken !== undefined) process.env.ANTHROPIC_AUTH_TOKEN = prevAuthToken;
+      else delete process.env.ANTHROPIC_AUTH_TOKEN;
     }
 
     // Track the query instance for abort capability
