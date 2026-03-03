@@ -4,7 +4,7 @@ import type { ModelOption } from '../../hooks/useCustomModels';
 
 interface ManageModelsPopoverProps {
   allModels: ModelOption[];
-  addModel: (value: string, label?: string, baseUrl?: string, systemPrompt?: string) => void;
+  addModel: (value: string, label?: string) => void;
   removeModel: (value: string) => void;
   isCustom: (value: string) => boolean;
 }
@@ -18,8 +18,6 @@ export default function ManageModelsPopover({
   const [open, setOpen] = useState(false);
   const [newId, setNewId] = useState('');
   const [newLabel, setNewLabel] = useState('');
-  const [newBaseUrl, setNewBaseUrl] = useState('');
-  const [newSystemPrompt, setNewSystemPrompt] = useState('');
   const popoverRef = useRef<HTMLDivElement>(null);
 
   // Close on outside click
@@ -37,11 +35,9 @@ export default function ManageModelsPopover({
   const handleAdd = () => {
     const trimmed = newId.trim();
     if (!trimmed) return;
-    addModel(trimmed, newLabel.trim() || undefined, newBaseUrl.trim() || undefined, newSystemPrompt.trim() || undefined);
+    addModel(trimmed, newLabel.trim() || undefined);
     setNewId('');
     setNewLabel('');
-    setNewBaseUrl('');
-    setNewSystemPrompt('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -78,12 +74,6 @@ export default function ManageModelsPopover({
                   {m.label !== m.value && (
                     <span className="text-muted-foreground truncate block text-[10px]">{m.value}</span>
                   )}
-                  {m.baseUrl && (
-                    <span className="text-muted-foreground/50 truncate block text-[10px]">{m.baseUrl}</span>
-                  )}
-                  {m.systemPrompt && (
-                    <span className="text-muted-foreground/50 truncate block text-[10px] italic">system prompt set</span>
-                  )}
                 </div>
                 {isCustom(m.value) ? (
                   <button
@@ -118,21 +108,6 @@ export default function ManageModelsPopover({
               onKeyDown={handleKeyDown}
               placeholder="Display name (optional)"
               className="w-full px-2 py-1 text-xs bg-muted/50 border border-border/60 rounded text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-            />
-            <input
-              type="text"
-              value={newBaseUrl}
-              onChange={(e) => setNewBaseUrl(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Base URL (optional, e.g. http://host:11434)"
-              className="w-full px-2 py-1 text-xs bg-muted/50 border border-border/60 rounded text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
-            />
-            <textarea
-              value={newSystemPrompt}
-              onChange={(e) => setNewSystemPrompt(e.target.value)}
-              placeholder="System prompt (optional)"
-              rows={2}
-              className="w-full px-2 py-1 text-xs bg-muted/50 border border-border/60 rounded text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/30 resize-y"
             />
             <button
               onClick={handleAdd}

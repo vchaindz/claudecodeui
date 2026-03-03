@@ -60,19 +60,28 @@ export function useCustomModels(provider: SessionProvider) {
   ];
 
   const addModel = useCallback(
-    (value: string, label?: string, baseUrl?: string, systemPrompt?: string) => {
+    (value: string, label?: string) => {
       const trimmedValue = value.trim();
       if (!trimmedValue) return;
       // Don't add duplicates
       if (allModels.some((m) => m.value === trimmedValue)) return;
       const entry: ModelOption = { value: trimmedValue, label: (label?.trim() || trimmedValue) };
-      if (baseUrl?.trim()) entry.baseUrl = baseUrl.trim();
-      if (systemPrompt?.trim()) entry.systemPrompt = systemPrompt.trim();
       const next = [...customModels, entry];
       setCustomModels(next);
       saveCustomModels(provider, next);
     },
     [provider, customModels, allModels]
+  );
+
+  const updateModel = useCallback(
+    (value: string, updates: Partial<Omit<ModelOption, 'value'>>) => {
+      const next = customModels.map((m) =>
+        m.value === value ? { ...m, ...updates } : m
+      );
+      setCustomModels(next);
+      saveCustomModels(provider, next);
+    },
+    [provider, customModels]
   );
 
   const removeModel = useCallback(
@@ -91,5 +100,5 @@ export function useCustomModels(provider: SessionProvider) {
 
   const defaultModel = getDefaultModelValue(provider);
 
-  return { allModels, addModel, removeModel, isCustom, defaultModel };
+  return { allModels, customModels, addModel, updateModel, removeModel, isCustom, defaultModel };
 }

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
-import { LogIn } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { LogIn, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '../../../../../../ui/badge';
 import { Button } from '../../../../../../ui/button';
 import SessionProviderLogo from '../../../../../../llm-logo-provider/SessionProviderLogo';
 import type { AgentProvider, AuthStatus } from '../../../../../types/types';
+import type { ModelOption } from '../../../../../../chat/hooks/useCustomModels';
 
 type AccountContentProps = {
   agent: AgentProvider;
@@ -64,6 +65,58 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
   const [ollamaThinkingModel, setOllamaThinkingModel] = useState(() =>
     localStorage.getItem('ollama-thinking-model') || ''
   );
+
+  // Custom models state
+  const [customModels, setCustomModels] = useState<ModelOption[]>(() => {
+    try {
+      const raw = localStorage.getItem('claude-custom-models');
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [newModelId, setNewModelId] = useState('');
+  const [newModelLabel, setNewModelLabel] = useState('');
+  const [newModelBaseUrl, setNewModelBaseUrl] = useState('');
+  const [newModelSystemPrompt, setNewModelSystemPrompt] = useState('');
+  const [editingModel, setEditingModel] = useState<string | null>(null);
+
+  const saveCustomModels = useCallback((models: ModelOption[]) => {
+    setCustomModels(models);
+    localStorage.setItem('claude-custom-models', JSON.stringify(models));
+  }, []);
+
+  const handleAddCustomModel = useCallback(() => {
+    const id = newModelId.trim();
+    if (!id) return;
+    if (customModels.some((m) => m.value === id)) return;
+    const entry: ModelOption = { value: id, label: newModelLabel.trim() || id };
+    if (newModelBaseUrl.trim()) entry.baseUrl = newModelBaseUrl.trim();
+    if (newModelSystemPrompt.trim()) entry.systemPrompt = newModelSystemPrompt.trim();
+    saveCustomModels([...customModels, entry]);
+    setNewModelId('');
+    setNewModelLabel('');
+    setNewModelBaseUrl('');
+    setNewModelSystemPrompt('');
+  }, [customModels, newModelId, newModelLabel, newModelBaseUrl, newModelSystemPrompt, saveCustomModels]);
+
+  const handleRemoveCustomModel = useCallback((value: string) => {
+    saveCustomModels(customModels.filter((m) => m.value !== value));
+  }, [customModels, saveCustomModels]);
+
+  const handleUpdateCustomModel = useCallback((value: string, updates: Partial<ModelOption>) => {
+    saveCustomModels(customModels.map((m) => m.value === value ? { ...m, ...updates } : m));
+  }, [customModels, saveCustomModels]);
+
+  // Sync custom models when localStorage changes from another component
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const raw = localStorage.getItem('claude-custom-models');
+        setCustomModels(raw ? JSON.parse(raw) : []);
+      } catch { /* ignore */ }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('ollama-enabled', String(ollamaEnabled));
@@ -226,6 +279,144 @@ export default function AccountContent({ agent, authStatus, onLogin }: AccountCo
                   <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">
                     Use a larger model when thinking mode is active. Leave empty to always use the selected model.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {ollamaEnabled && (
+              <div className="border-t border-orange-200 dark:border-orange-700 pt-4 space-y-3">
+                <div>
+                  <div className="font-medium text-orange-900 dark:text-orange-100 mb-2">
+                    Custom Models
+                  </div>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mb-3">
+                    Add models with per-model base URLs and system prompts. These appear in the chat model selector.
+                  </p>
+
+                  {/* Existing custom models list */}
+                  {customModels.length > 0 && (
+                    <div className="space-y-2 mb-3">
+                      {customModels.map((m) => (
+                        <div key={m.value} className="border border-orange-200 dark:border-orange-700 rounded-md p-2 bg-white/50 dark:bg-gray-800/50">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-orange-900 dark:text-orange-100 truncate">{m.label}</span>
+                                {m.baseUrl && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                    custom URL
+                                  </Badge>
+                                )}
+                                {m.systemPrompt && (
+                                  <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300">
+                                    system prompt
+                                  </Badge>
+                                )}
+                              </div>
+                              {m.label !== m.value && (
+                                <span className="text-xs text-orange-600/70 dark:text-orange-400/70 truncate block">{m.value}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                onClick={() => setEditingModel(editingModel === m.value ? null : m.value)}
+                                className="p-1 rounded text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-200 hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                                title="Edit model"
+                                type="button"
+                              >
+                                {editingModel === m.value ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
+                              <button
+                                onClick={() => handleRemoveCustomModel(m.value)}
+                                className="p-1 rounded text-orange-600 hover:text-red-600 dark:text-orange-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                title="Remove model"
+                                type="button"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Inline edit panel */}
+                          {editingModel === m.value && (
+                            <div className="mt-2 pt-2 border-t border-orange-200/50 dark:border-orange-700/50 space-y-2">
+                              <div>
+                                <label className="block text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">Display Name</label>
+                                <input
+                                  type="text"
+                                  value={m.label}
+                                  onChange={(e) => handleUpdateCustomModel(m.value, { label: e.target.value })}
+                                  className="w-full px-2 py-1 text-xs border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">Base URL</label>
+                                <input
+                                  type="text"
+                                  value={m.baseUrl || ''}
+                                  onChange={(e) => handleUpdateCustomModel(m.value, { baseUrl: e.target.value || undefined })}
+                                  placeholder="Uses global Ollama URL if empty"
+                                  className="w-full px-2 py-1 text-xs border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-orange-800 dark:text-orange-200 mb-0.5">System Prompt</label>
+                                <textarea
+                                  value={m.systemPrompt || ''}
+                                  onChange={(e) => handleUpdateCustomModel(m.value, { systemPrompt: e.target.value || undefined })}
+                                  placeholder="Optional system prompt for this model"
+                                  rows={3}
+                                  className="w-full px-2 py-1 text-xs border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500 resize-y"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add new model form */}
+                  <div className="border border-dashed border-orange-300 dark:border-orange-700 rounded-md p-3 space-y-2">
+                    <p className="text-xs font-medium text-orange-800 dark:text-orange-200">Add Model</p>
+                    <input
+                      type="text"
+                      value={newModelId}
+                      onChange={(e) => setNewModelId(e.target.value)}
+                      placeholder="Model ID (required, e.g. llama3.2:latest)"
+                      className="w-full px-2 py-1.5 text-sm border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                    <input
+                      type="text"
+                      value={newModelLabel}
+                      onChange={(e) => setNewModelLabel(e.target.value)}
+                      placeholder="Display name (optional)"
+                      className="w-full px-2 py-1.5 text-sm border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                    <input
+                      type="text"
+                      value={newModelBaseUrl}
+                      onChange={(e) => setNewModelBaseUrl(e.target.value)}
+                      placeholder="Base URL (optional, e.g. http://host:11434)"
+                      className="w-full px-2 py-1.5 text-sm border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    />
+                    <textarea
+                      value={newModelSystemPrompt}
+                      onChange={(e) => setNewModelSystemPrompt(e.target.value)}
+                      placeholder="System prompt (optional)"
+                      rows={2}
+                      className="w-full px-2 py-1.5 text-sm border border-orange-300 dark:border-orange-700 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder:text-orange-400/60 focus:outline-none focus:ring-1 focus:ring-orange-500 resize-y"
+                    />
+                    <button
+                      onClick={handleAddCustomModel}
+                      disabled={!newModelId.trim()}
+                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      type="button"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add Model
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
